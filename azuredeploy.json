@@ -1,0 +1,705 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "LocType": {
+      "type": "string",
+      "defaultValue": "East US",
+      "allowedValues": [
+        "East US",
+        "West US",
+        "Central US",
+        "South Central US",
+        "North Europe",
+        "West Europe",
+        "East Asia",
+        "Southeast Asia",
+        "Japan East",
+        "Japan West",
+        "Brazil South",
+        "Australia East",
+        "Australia Southeast"
+      ]
+    },
+    "ADDCVMSize": {
+      "type": "string",
+      "defaultValue": "Standard_D1_v2",
+      "allowedValues": [
+        "Standard_D1_v2",
+        "Standard_D1",
+        "Standard_A2",
+        "Standard_A3",
+        "Standard_D2",
+        "Standard_D2_v2"
+      ]
+    },
+    "LBILB_name": {
+      "type": "string",
+      "defaultValue": "ADFSILB"
+    },
+    "PROXLB_name": {
+      "type": "string",
+      "defaultValue": "PROXLB"
+    },
+    "publicIPAddresses_PIPLB_name": {
+      "type": "string",
+      "defaultValue": "STSPIP"
+    },
+    "ADFSVMSize": {
+      "type": "string",
+      "defaultValue": "Standard_D1_v2",
+      "allowedValues": [
+        "Standard_D1_v2",
+        "Standard_D1",
+        "Standard_A2",
+        "Standard_A3",
+        "Standard_D2",
+        "Standard_D2_v2"
+      ]
+    },
+    "PROXVMSize": {
+      "type": "string",
+      "defaultValue": "Standard_D1_v2",
+      "allowedValues": [
+        "Standard_D1_v2",
+        "Standard_D1",
+        "Standard_A2",
+        "Standard_A3",
+        "Standard_D2",
+        "Standard_D2_v2"
+      ]
+    },
+    "DSYNVMSize": {
+      "type": "string",
+      "defaultValue": "Standard_D1_v2",
+      "allowedValues": [
+        "Standard_D1_v2",
+        "Standard_D1",
+        "Standard_A2",
+        "Standard_A3",
+        "Standard_D2",
+        "Standard_D2_v2"
+      ]
+    },
+    "o365storeType": {
+      "type": "string",
+      "defaultValue": "Standard_GRS",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_ZRS",
+        "Standard_GRS",
+        "Standard_RAGRS",
+        "Premium_LRS"
+      ]
+    },
+    "ADDC01Name": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "ADDC01"
+    },
+    "LocalAdminUserName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "LocalAdminPassword": {
+      "type": "securestring"
+    },
+    "ServerWindowsOSVersion": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter",
+      "allowedValues": [
+        "2008-R2-SP1",
+        "2012-Datacenter",
+        "2012-R2-Datacenter",
+        "Windows-Server-Technical-Preview"
+      ]
+    },
+    "ADDC-AVSetName": {
+      "type": "string",
+      "defaultValue": "ADDC-AVSet",
+      "minLength": 1
+    },
+    "ADFS-AVSetName": {
+      "type": "string",
+      "defaultValue": "ADFS-AVSet",
+      "minLength": 1
+    },
+    "PROX-AVSetName": {
+      "type": "string",
+      "defaultValue": "PROX-AVSet",
+      "minLength": 1
+    },
+    "ADFS01Name": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "ADFS01"
+    },
+    "DSYN01Name": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "DSYN01"
+    },
+    "PROX01Name": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "PROX01"
+    }
+  },
+  "variables": {
+    "O365-VNETPrefix": "10.202.252.0/24",
+    "O365-VNETSubnet1Name": "PROD",
+    "O365-VNETSubnet1Prefix": "10.202.252.32/27",
+    "O365-VNETSubnet2Name": "DMZ",
+    "O365-VNETSubnet2Prefix": "10.202.252.64/27",
+    "o365storelrsName": "[concat(UniqueString(resourceGroup().id))]",
+    "MSImagePublisher": "MicrosoftWindowsServer",
+    "MSImageOffer": "WindowsServer",
+    "ADDC01OSDiskName": "ADDC01OSDisk",
+    "ADDC01DADiskName": "ADDC01DADisk",
+    "ADDC01VnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'O365-VNET')]",
+    "ADDC01SubnetRef": "[concat(variables('ADDC01VnetID'), '/subnets/', variables('O365-VNETSubnet1Name'))]",
+    "ADDC01StorageAccountContainerName": "vhds",
+    "ADDC01NicName": "[concat(parameters('ADDC01Name'), 'NetworkInterface')]",
+    "ADFS01OSDiskName": "ADFS01OSDisk",
+    "ADFS01VnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'O365-VNET')]",
+    "ADFS01SubnetRef": "[concat(variables('ADFS01VnetID'), '/subnets/', variables('O365-VNETSubnet1Name'))]",
+    "ADFS01StorageAccountContainerName": "vhds",
+    "ADFS01NicName": "[concat(parameters('ADFS01Name'), 'NetworkInterface')]",
+    "DSYN01OSDiskName": "DSYN01OSDisk",
+    "DSYN01VmSize": "Standard_D1",
+    "DSYN01VnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'O365-VNET')]",
+    "DSYN01SubnetRef": "[concat(variables('DSYN01VnetID'), '/subnets/', variables('O365-VNETSubnet1Name'))]",
+    "DSYN01StorageAccountContainerName": "vhds",
+    "DSYN01NicName": "[concat(parameters('DSYN01Name'), 'NetworkInterface')]",
+    "PROX01OSDiskName": "PROX01OSDisk",
+    "PROX01VnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'O365-VNET')]",
+    "PROX01SubnetRef": "[concat(variables('PROX01VnetID'), '/subnets/', variables('O365-VNETSubnet2Name'))]",
+    "PROX01StorageAccountContainerName": "vhds",
+    "PROX01NicName": "[concat(parameters('PROX01Name'), 'NetworkInterface')]",
+    "STSVnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'O365-VNET')]",
+    "STSSubnetRef": "[concat(variables('STSVnetID'), '/subnets/', variables('O365-VNETSubnet2Name'))]",
+    "NSGname": "NSG3389",
+    "PIP1Name": "PIP1",
+    "PIP3Name": "PIP3",
+    "PIP2Name": "PIP2"
+  },
+  "resources": [
+    {
+      "name": "O365-VNET",
+      "type": "Microsoft.Network/virtualNetworks",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "O365-VNET"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('O365-VNETPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('O365-VNETSubnet1Name')]",
+            "properties": {
+              "addressPrefix": "[variables('O365-VNETSubnet1Prefix')]"
+            }
+          },
+          {
+            "name": "[variables('O365-VNETSubnet2Name')]",
+            "properties": {
+              "addressPrefix": "[variables('O365-VNETSubnet2Prefix')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[variables('o365storelrsName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "o365store"
+      },
+      "properties": {
+        "accountType": "[parameters('o365storeType')]"
+      }
+    },
+    {
+      "comments": "Generalized from resource: /subscriptions/6820d920-c94a-41f8-9e08-811fa97a1624/resourceGroups/TestLB/providers/Microsoft.Network/publicIPAddresses/PIPLB",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[parameters('publicIPAddresses_PIPLB_name')]",
+      "tags": {
+        "displayName": "STSPIP"
+      },
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('LocType')]",
+      "properties": {
+        "publicIPAllocationMethod": "Static",
+        "idleTimeoutInMinutes": 4
+      }
+    },
+    {
+      "name": "[variables('PIP1Name')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "PIP1"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "idleTimeoutInMinutes": 4
+      }
+    },
+    {
+      "name": "[variables('PIP2Name')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "PIP2"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "idleTimeoutInMinutes": 4
+      }
+    },
+    {
+      "name": "[variables('PIP3Name')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "PIP3"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "idleTimeoutInMinutes": 4
+      }
+    },
+    {
+      "name": "[parameters('ADDC-AVSetName')]",
+      "type": "Microsoft.Compute/availabilitySets",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "ADDC-AVSet"
+      },
+      "properties": {
+        "platformUpdateDomainCount": 5,
+        "platformFaultDomainCount": 3
+      }
+    },
+    {
+      "name": "[parameters('ADFS-AVSetName')]",
+      "type": "Microsoft.Compute/availabilitySets",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "ADFS-AVSet"
+      },
+      "properties": {
+        "platformUpdateDomainCount": 5,
+        "platformFaultDomainCount": 3
+      }
+    },
+    {
+      "name": "[parameters('PROX-AVSetName')]",
+      "type": "Microsoft.Compute/availabilitySets",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "PROX-AVSet"
+      },
+      "properties": {
+        "platformUpdateDomainCount": 5,
+        "platformFaultDomainCount": 3
+      }
+    },
+    {
+      "name": "[variables('ADDC01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', 'O365-VNET')]",
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('PIP1Name'))]"
+      ],
+      "tags": {
+        "displayName": "ADDC01Nic"
+      },
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NSGname'))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.202.252.37",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('ADDC01SubnetRef')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('PIP1Name'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('ADDC01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', variables('o365storelrsName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('ADDC01NicName'))]",
+        "[concat('Microsoft.Compute/availabilitySets/', parameters('ADDC-AVSetName'))]"
+      ],
+      "tags": {
+        "displayName": "ADDC01"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('ADDC-AVSetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('ADDCVMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('ADDC01Name')]",
+          "adminUsername": "[parameters('LocalAdminUsername')]",
+          "adminPassword": "[parameters('LocalAdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('MSImagePublisher')]",
+            "offer": "[variables('MSImageOffer')]",
+            "sku": "[parameters('ServerWindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "ADDC01OSDisk",
+            "vhd": {
+              "uri": "[concat('http://', variables('o365storelrsName'), '.blob.core.windows.net/', variables('ADDC01StorageAccountContainerName'), '/', variables('ADDC01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          },
+          "dataDisks": [
+            {
+              "name": "ADDC01DADisk",
+              "diskSizeGB": "10",
+              "lun": 0,
+              "vhd": {
+                "uri": "[concat('http://', variables('o365storelrsName'), '.blob.core.windows.net/', variables('ADDC01StorageAccountContainerName'), '/', variables('ADDC01DADiskName'), '.vhd')]"
+              },
+              "createOption": "Empty"
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('ADDC01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('ADFS01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', 'O365-VNET')]"
+      ],
+      "tags": {
+        "displayName": "ADFS01Nic"
+      },
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NSGname'))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.202.252.39",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('ADFS01SubnetRef')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('PIP2Name'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('ADFS01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', variables('o365storelrsName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('ADFS01NicName'))]"
+      ],
+      "tags": {
+        "displayName": "ADFS01"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('ADFS-AVSetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('ADFSVMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('ADFS01Name')]",
+          "adminUsername": "[parameters('LocalAdminUsername')]",
+          "adminPassword": "[parameters('LocalAdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('MSImagePublisher')]",
+            "offer": "[variables('MSImageOffer')]",
+            "sku": "[parameters('ServerWindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "ADFS01OSDisk",
+            "vhd": {
+              "uri": "[concat('http://', variables('o365storelrsName'), '.blob.core.windows.net/', variables('ADFS01StorageAccountContainerName'), '/', variables('ADFS01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('ADFS01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('DSYN01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', 'O365-VNET')]"
+      ],
+      "tags": {
+        "displayName": "DSYN01Nic"
+      },
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NSGname'))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.202.252.42",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('DSYN01SubnetRef')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('PIP3Name'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('DSYN01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', variables('o365storelrsName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('DSYN01NicName'))]"
+      ],
+      "tags": {
+        "displayName": "DSYN01"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('DSYNVMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('DSYN01Name')]",
+          "adminUsername": "[parameters('LocalAdminUsername')]",
+          "adminPassword": "[parameters('LocalAdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('MSImagePublisher')]",
+            "offer": "[variables('MSImageOffer')]",
+            "sku": "[parameters('ServerWindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "DSYN01OSDisk",
+            "vhd": {
+              "uri": "[concat('http://', variables('o365storelrsName'), '.blob.core.windows.net/', variables('DSYN01StorageAccountContainerName'), '/', variables('DSYN01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DSYN01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('PROX01NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', 'O365-VNET')]"
+      ],
+      "tags": {
+        "displayName": "PROX01Nic"
+      },
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NSGname'))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.202.252.69",
+              "privateIPAllocationMethod": "Static",
+              "subnet": {
+                "id": "[variables('PROX01SubnetRef')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_PIPLB_name'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('PROX01Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[parameters('LocType')]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', variables('o365storelrsName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('PROX01NicName'))]"
+      ],
+      "tags": {
+        "displayName": "PROX01"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('PROX-AVSetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('PROXVmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('PROX01Name')]",
+          "adminUsername": "[parameters('LocalAdminUsername')]",
+          "adminPassword": "[parameters('LocalAdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('MSImagePublisher')]",
+            "offer": "[variables('MSImageOffer')]",
+            "sku": "[parameters('ServerWindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "PROX01OSDisk",
+            "vhd": {
+              "uri": "[concat('http://', variables('o365storelrsName'), '.blob.core.windows.net/', variables('PROX01StorageAccountContainerName'), '/', variables('PROX01OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('PROX01NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('NSGname')]",
+      "tags": {
+        "displayName": "NSG3389"
+      },
+      "apiVersion": "2015-06-15",
+      "location": "[parameters('LocType')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "default-allow-rdp",
+            "properties": {
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 1000,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "default-allow-443",
+            "properties": {
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 1001,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+  }
+}

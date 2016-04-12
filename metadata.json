@@ -1,0 +1,7 @@
+{
+  "itemDisplayName": "O365 Starter Template",
+  "description": "This template will create a IaaS ADDC, ADFS, WAP enviroment you can use for Azure AD and Office 365",
+  "summary": "This template serves for rapid deployment of Azure AD or Office 365 needs",
+  "githubUsername": "SwiftSolves",
+  "dateUpdated": "2016-04-12"
+}
