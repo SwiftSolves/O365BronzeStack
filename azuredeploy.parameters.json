@@ -1,12 +1,36 @@
-﻿{
+{
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "o365storeType": {
-            "value": "Standard_LRS"
+      "ADFSVMSize": {
+        "value": "Standard_D1_v2"
+      },
+      "PROXVMSize": {
+        "value": "Standard_D1_v2"
+      },
+      "DSYNVMSize": {
+        "value": "Standard_D1_v2"
+      },
+        "ADDC01Name": {
+            "value": "ADDC01"
         },
         "LocalAdminUserName": {
-            "value": "Eagle"
-        }
+            "value": ""
+        },
+        "LocalAdminPassword": {
+            "value": ""
+        },
+        "ADFS01Name": {
+            "value": "ADFS01"
+        },
+        "DSYN01Name": {
+            "value": "DSYN01"
+        },
+        "PROX01Name": {
+            "value": "PROX01"
+        },
+      "ADDCVMSize": {
+        "value": "Standard_D1_v2"
+      }
     }
 }
